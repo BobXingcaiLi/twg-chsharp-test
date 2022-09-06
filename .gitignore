@@ -1,6 +1,5 @@
-bin/*
-obj/*
-.vs/*
-twg-charp-test/.vs/*
-twg-charp-test/bin/*
-twg-charp-test/obj/*
+*.bak
+*/obj/
+*/bin/
+.vs/
+
