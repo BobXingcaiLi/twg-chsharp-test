@@ -1,12 +1,9 @@
-﻿using Newtonsoft.Json;
-
-namespace CSharpTest.Models
+﻿namespace CSharpTest.Models
 {
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public class ProductDto
+    public class ProductObj
     {
         public string? Class0 { get; set; }
-        public PriceDto? Price { get; set; }
+        public PriceObj? Price { get; set; }
         public string? Barcode { get; set; }
         public string? ItemDescription { get; set; }
         public string? DeptID { get; set; }
@@ -14,6 +11,7 @@ namespace CSharpTest.Models
         public string? Class0ID { get; set; }
         public string? SubDeptID { get; set; }
         public string? Description { get; set; }
+        public decimal? BranchPrice { get; set; }
         public string? ItemCode { get; set; }
         public string? SubDept { get; set; }
         public string? ClassID { get; set; }

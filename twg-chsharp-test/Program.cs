@@ -1,10 +1,11 @@
 using CSharpTest.Services.BusinessLogic;
+using CSharpTest.Services.Log;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-//builder.Services.AddSingleton<IConfiguration, Configuration>();
 builder.Services.AddSingleton<ISearchService, SearchService>();
+builder.Services.AddSingleton<ILogService, LogService>();
 
 builder.Services.AddControllers();
 
