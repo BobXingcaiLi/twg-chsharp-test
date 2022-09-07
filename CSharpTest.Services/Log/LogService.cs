@@ -1,98 +1,38 @@
-﻿using System.Data.SqlClient;
-using CSharpTest.Models;
-using Microsoft.Extensions.Configuration;
+﻿using CSharpTest.Models;
+using CSharpTest.Services.Repository;
 
 namespace CSharpTest.Services.Log
 {
     public class LogService : ILogService
     {
-        private readonly IConfiguration _configuration;
-        public LogService(IConfiguration configuration)
+        private readonly IRequestRepository _requestRepository;
+        private readonly ISearchRequestRepository _searchRequestRepository;
+        private readonly ISearchTopProductsRepository _searchTopProductsRepository;
+
+        public LogService (
+            IRequestRepository requestRepository,
+            ISearchRequestRepository searchRequestRepository,
+            ISearchTopProductsRepository searchTopProductsRepository
+            )
         {
-            _configuration = configuration;
+            _requestRepository = requestRepository;
+            _searchRequestRepository = searchRequestRepository;
+            _searchTopProductsRepository = searchTopProductsRepository;
         }
 
         public async Task<long> LogRequest(char kind)
         {
-            long generatedRid = 0;
-            string connectionString = _configuration.GetSection("ConnectionStrings:DB").Value;
-
-            string commandText = "INSERT INTO devtest.Request (TimeStamp, Kind) VALUES ( @TIMESTAMP, @KIND );SELECT SCOPE_IDENTITY();";
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                SqlCommand command = new SqlCommand(commandText, connection);
-                command.Parameters.AddWithValue("@TIMESTAMP", DateTime.Now);
-                command.Parameters.AddWithValue("@KIND", kind);
-
-                try
-                {
-                    await connection.OpenAsync();
-                    generatedRid = long.Parse((await command.ExecuteScalarAsync()).ToString());
-                    
-                }
-                catch (Exception ex)
-                {
-                    //record the exception 
-                }
-            }
-
-            return generatedRid;
+            return await _requestRepository.InsertAsync(kind);
         }
 
         public async Task LogSearchRequest(long rid, string search, char successInd, int hits)
         {
-            string connectionString = _configuration.GetSection("ConnectionStrings:DB").Value;
-
-            string commandText = "INSERT INTO devtest.SearchRequest (Rid, Search, SuccessInd, Hits) VALUES ( @RID, @SEARCH, @SUCCESS_IND, @HITS);";
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                SqlCommand command = new SqlCommand(commandText, connection);
-                command.Parameters.AddWithValue("@RID", rid);
-                command.Parameters.AddWithValue("@SEARCH", search);
-                command.Parameters.AddWithValue("@SUCCESS_IND", successInd);
-                command.Parameters.AddWithValue("@HITS", hits);
-
-                try
-                {
-                    await connection.OpenAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-                catch (Exception ex)
-                {
-                    //Console.WriteLine(ex.Message);
-                }
-            }
+            await _searchRequestRepository.InsertAsync(rid, search, successInd, hits);
         }
 
         public async Task LogSearchTopProducts(long rid, List<TopProduct> topProducts)
         {
-            string connectionString = _configuration.GetSection("ConnectionStrings:DB").Value;
-
-            string commandText = "INSERT INTO devtest.SearchTopProducts (Rid, [Order], ProductId) VALUES ( @RID, @ORDER, @PRODUCT_ID);";
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                SqlCommand command = new SqlCommand(commandText, connection);
-                
-                try
-                {
-                    await connection.OpenAsync();
-                    foreach (var product in topProducts)
-                    {
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("@RID", rid);
-                        command.Parameters.AddWithValue("@ORDER", product.Order);
-                        command.Parameters.AddWithValue("@PRODUCT_ID", product.ProductId);
-                        await command.ExecuteNonQueryAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    //Console.WriteLine(ex.Message);
-                }
-            }
+            await _searchTopProductsRepository.InsertAsync(rid, topProducts);
         }
     }
 }
