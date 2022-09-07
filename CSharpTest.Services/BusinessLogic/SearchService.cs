@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Web;
 using CSharpTest.Models;
 using CSharpTest.Services.Log;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -15,66 +11,88 @@ namespace CSharpTest.Services.BusinessLogic
     {
         private readonly IConfiguration _configuration;
         private readonly ILogService _logService;
-        public SearchService(IConfiguration iconfig, ILogService logService)
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        public SearchService(IConfiguration iconfig, ILogService logService, IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
         {
             _configuration = iconfig;
             _logService = logService;
+            _httpClientFactory = httpClientFactory;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<List<ProductObj>> SearchProductsAsync(string searchTerm)
         {
             var productList = new List<ProductObj>();
-            string SubscriptionKey = _configuration.GetSection("SUB_KEY").Value;
             
             // Search
-            HttpClient searchClient = new();
-            searchClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", $"{SubscriptionKey}");
-            // Hardcode user for POC
-            string url = "https://twg.azure-api.net/bolt/search.json?Start=0&Limit=10&UserId=21E3BC8B-CA74-4C9A-9A0F-F0748A550B92&Search=" + searchTerm;
-            HttpResponseMessage searchResponse = await searchClient.GetAsync(url);
-            string searchResult = searchResponse.Content.ReadAsStringAsync().Result;
+            var searchClient = _httpClientFactory.CreateClient("twg-test-client");
+
+            var queryString = HttpUtility.ParseQueryString(string.Empty);
+
+            //queryString["Start"] = "{string}";
+            //queryString["Limit"] = "{string}";
+            //queryString["MachineID"] = "{string}";
+            //queryString["Branch"] = "{string}";
+            queryString["Search"] = searchTerm;
+            //queryString["Screen"] = "{string}";
+            queryString["UserID"] = _configuration.GetSection("USER_ID").Value;
+            var urlPath = $"search.json?" + queryString;
+            var searchResponse = await searchClient.GetAsync(urlPath);
 
             //Log
-            var rid = await _logService.LogRequest('S');
-            
-
-            var result = JsonConvert.DeserializeObject<ProductSearchResultObj?>(searchResult);
-            if(result != null)
+            var rid = long.Parse(_httpContextAccessor.HttpContext.Request.Headers["RID"].ToString());
+            if (searchResponse.IsSuccessStatusCode)
             {
-                if(result.Found == 'Y')
+                string searchResult = searchResponse.Content.ReadAsStringAsync().Result;
+                var result = JsonConvert.DeserializeObject<ProductSearchResultObj?>(searchResult);
+                if (result != null)
                 {
-                    await _logService.LogSearchRequest(rid, searchTerm, result.Found, result.HitCount);
-                    productList = result.Results!.SelectMany(x => x.Products!).Where(y => !string.IsNullOrEmpty(y.ProductKey)).ToList();
-                    var topProducts = productList.Take(3).Select((x, index) => new TopProduct(index, x.ProductKey)).ToList();
-                    await _logService.LogSearchTopProducts(rid, topProducts);
-                }
-                else
-                {
-                    await _logService.LogSearchRequest(rid, searchTerm, result.Found, 0);
+                    if (result.Found == 'Y')
+                    {
+                        await _logService.LogSearchRequest(rid, searchTerm, result.Found, result.HitCount);
+                        productList = result.Results!.SelectMany(x => x.Products!).Where(y => !string.IsNullOrEmpty(y.ProductKey)).ToList();
+                        var topProducts = productList.Take(3).Select((x, index) => new TopProduct(index, $"R{x.ProductKey}")).ToList();
+                        await _logService.LogSearchTopProducts(rid, topProducts);
+                    }
+                    else
+                    {
+                        await _logService.LogSearchRequest(rid, searchTerm, result.Found, 0);
+                    }
                 }
             }
-
+            
             return productList;
         }
 
-        public async Task<ProductObj> SearchProductPriceAsync(string searchTerm)
+        public async Task<ProductObj?> SearchProductPriceAsync(string searchTerm)
         {
-            string SubscriptionKey = _configuration.GetSection("SUB_KEY").Value;
-            HttpClient priceClient = new();
-            priceClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", $"{SubscriptionKey}");
-            string url = "https://twg.azure-api.net/bolt/price.json?UserId=21E3BC8B-CA74-4C9A-9A0F-F0748A550B92&MachineID=test&Barcode=" + searchTerm;
-            HttpResponseMessage searchResponse = await priceClient.GetAsync(url);
-            string searchResult = searchResponse.Content.ReadAsStringAsync().Result;
+            // Search
+            var priceClient = _httpClientFactory.CreateClient("twg-test-client");
 
-            //Log
-            var rid = await _logService.LogRequest('P');
+            var queryString = HttpUtility.ParseQueryString(string.Empty);
 
-            var result = JsonConvert.DeserializeObject<ProductPriceSearchResult?>(searchResult);
-            if (result != null && result.Found == 'Y')
+            queryString["Barcode"] = searchTerm;
+            queryString["MachineID"] = "test";
+            queryString["UserID"] = _configuration.GetSection("USER_ID").Value;
+            //queryString["Branch"] = "{number}";
+            //queryString["DontSave"] = "{string}";
+            var urlPath = $"price.json?" + queryString;
+            var searchResponse = await priceClient.GetAsync(urlPath);
+
+            //var rid = long.Parse(_httpContextAccessor.HttpContext.Request.Headers["RID"].ToString());
+
+            if (searchResponse.IsSuccessStatusCode)
             {
-                return result.Product;
+                string searchResult = searchResponse.Content.ReadAsStringAsync().Result;
+                var result = JsonConvert.DeserializeObject<ProductPriceSearchResult?>(searchResult);
+                if (result != null && result.Found == 'Y')
+                {
+                    return result.Product!;
+                }
             }
-            return new ProductObj();
+                        
+            return null;
         }
     }
 }

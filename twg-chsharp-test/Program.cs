@@ -1,13 +1,22 @@
 using CSharpTest.Services.BusinessLogic;
 using CSharpTest.Services.Log;
+using CSharpTest.Models;
+using CSharpTest.Services.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
-
+ConfigurationManager configuration = builder.Configuration;
 // Add services to the container.
 builder.Services.AddSingleton<ISearchService, SearchService>();
 builder.Services.AddSingleton<ILogService, LogService>();
-
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAutoMapper(typeof(MapperProfile));
+builder.Services.AddHttpClient("twg-test-client", httpClient =>
+{
+    httpClient.BaseAddress = new Uri(configuration.GetSection("API_BASE_URL").Value);
+    httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", configuration.GetSection("SUB_KEY").Value);
+});
 builder.Services.AddControllers();
+
 
 var app = builder.Build();
 
@@ -19,6 +28,9 @@ if (!app.Environment.IsDevelopment ()) {
 }
 
 app.UseAuthorization();
+
+app.UseMiddleware<RequestLoggingHandler>();
+app.UseMiddleware<ExceptionHandler>();
 
 app.MapControllers();
 

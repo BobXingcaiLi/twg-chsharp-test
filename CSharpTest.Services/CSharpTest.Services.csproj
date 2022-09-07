@@ -7,13 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Middleware\i2caqyk0.lbd~" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CSharpTest.Models\CSharpTest.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Factory\" />
   </ItemGroup>
 
 </Project>

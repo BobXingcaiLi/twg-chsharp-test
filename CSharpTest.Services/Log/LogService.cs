@@ -17,7 +17,7 @@ namespace CSharpTest.Services.Log
             long generatedRid = 0;
             string connectionString = _configuration.GetSection("ConnectionStrings:DB").Value;
 
-            string commandText = "INSERT INTO devtest.Request (TimeStamp, Kind) VALUES ( @TIMESTAMP, @KIND );";
+            string commandText = "INSERT INTO devtest.Request (TimeStamp, Kind) VALUES ( @TIMESTAMP, @KIND );SELECT SCOPE_IDENTITY();";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -28,12 +28,12 @@ namespace CSharpTest.Services.Log
                 try
                 {
                     await connection.OpenAsync();
-                    var result = await command.ExecuteScalarAsync();
+                    generatedRid = long.Parse((await command.ExecuteScalarAsync()).ToString());
                     
                 }
                 catch (Exception ex)
                 {
-
+                    //record the exception 
                 }
             }
 

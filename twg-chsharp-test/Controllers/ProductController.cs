@@ -1,18 +1,19 @@
-﻿using CSharpTest.Services.BusinessLogic;
+﻿using AutoMapper;
+using CSharpTest.Models;
+using CSharpTest.Services.BusinessLogic;
 using Microsoft.AspNetCore.Mvc;
-using System.Data.SqlClient;
 
-namespace CSharpTest.Controllers {
+namespace CSharpTest.Controllers
+{
     [ApiController]
     [Route ("[controller]")]
     public class ProductController : ControllerBase {
-        private readonly IConfiguration _configuration;
         private readonly ISearchService _searchService;
-
-        public ProductController(IConfiguration iconfig,
+        private readonly IMapper _mapper;
+        public ProductController(IMapper mapper,
             ISearchService searchService) 
         {
-            _configuration = iconfig;
+            _mapper = mapper;
             _searchService = searchService;
 
         }
@@ -21,14 +22,18 @@ namespace CSharpTest.Controllers {
         public async Task<IActionResult> SearchAsync([FromQuery] string q) 
         {
             var result = await _searchService.SearchProductsAsync(q);
-            return new OkObjectResult (result);
+
+            //return the product array
+            return new OkObjectResult (_mapper.Map<List<ProductModel>>(result));
         }
 
         [Route ("Price"), HttpGet]
         public async Task<IActionResult> Price([FromQuery] string q) 
         {
             var result = await _searchService.SearchProductPriceAsync(q);
-            return new OkObjectResult (result);
+
+            //return the product object with price object
+            return new OkObjectResult (result != null ? _mapper.Map<ProductWithPriceModel>(result) : "Not Found");
         }
     }
 }
